@@ -25,6 +25,7 @@ Smart AI-powered template filler — upload a Word template with `{{PLACEHOLDERS
 ### Online (GitHub Pages)
 
 Visit the live app and enter your Hugging Face API key in the Setup section.
+https://rakspa-ts.github.io/docufill-ai/
 
 ### Local Development
 
