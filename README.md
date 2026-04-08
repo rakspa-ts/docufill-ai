@@ -30,7 +30,7 @@ Visit the live app and enter your Hugging Face API key in the Setup section.
 
 1. Clone the repo:
    ```bash
-   git clone https://github.com/Shreeshts/docufill-ai.git
+   git clone https://github.com/rakspa-ts/docufill-ai.git
    cd docufill-ai
    ```
 
