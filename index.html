@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocuFill AI — Smart Template Filler</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>&#128196; DocuFill AI</h1>
+            <p class="subtitle">Upload a Word template, provide content, let AI fill it in &mdash; download as Word or PDF</p>
+        </header>
+
+        <main>
+            <!-- Setup: API Key (loaded from .env) -->
+            <section class="card" id="api-section">
+                <div class="step-badge">Setup</div>
+                <h2>Hugging Face API Key</h2>
+                <div id="key-status" class="status-msg">Loading&hellip;</div>
+                <div id="key-input-area" class="hidden">
+                    <p class="help-text">
+                        Enter your <strong>free</strong>
+                        <a href="https://huggingface.co/settings/tokens/new?ownUserPermissions=inference.serverless.write&tokenType=fineGrained" target="_blank" rel="noopener">Hugging Face token</a>
+                        (select <em>Make calls to Inference Providers</em>). Your key stays in your browser &mdash; it is never sent to any server except Hugging Face.
+                    </p>
+                    <div class="input-group">
+                        <input type="password" id="api-key" placeholder="hf_xxxxxxxxxxxxxxxxx" autocomplete="off" />
+                        <button id="save-key" class="btn-primary" style="padding:.6rem .9rem">Save</button>
+                    </div>
+                </div>
+                <details class="model-details">
+                    <summary>Advanced: Change model</summary>
+                    <select id="model-select">
+                        <option value="meta-llama/Llama-3.1-8B-Instruct" selected>Llama 3.1 8B Instruct (fast)</option>
+                        <option value="Qwen/Qwen2.5-72B-Instruct">Qwen 2.5 72B Instruct (smarter)</option>
+                        <option value="deepseek-ai/DeepSeek-R1-0528">DeepSeek R1 (reasoning)</option>
+                    </select>
+                </details>
+            </section>
+
+            <!-- Step 1: Upload Template -->
+            <section class="card" id="template-section">
+                <div class="step-badge">Step 1</div>
+                <h2>Upload Template</h2>
+                <p class="help-text">
+                    Upload a <strong>.docx</strong> file with placeholders like
+                    <code>{{TITLE}}</code>, <code>{{CONTENT}}</code>, <code>{{DATE}}</code>, etc.
+                </p>
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-icon">&#128193;</div>
+                    <p>Drag &amp; drop your .docx file here, or click to browse</p>
+                    <input type="file" id="template-file" accept=".docx" hidden />
+                </div>
+                <button id="demo-template-btn" class="btn-link">or try the built-in demo template</button>
+                <button id="download-demo-btn" class="btn-link">&#128229; download sample template (.docx)</button>
+                <div id="template-info" class="template-info hidden">
+                    <div class="file-badge">
+                        <span id="file-name"></span>
+                        <button id="remove-file" class="btn-sm" title="Remove">&times;</button>
+                    </div>
+                    <div id="placeholders-found" class="placeholders-list"></div>
+                </div>
+            </section>
+
+            <!-- Step 2: Content -->
+            <section class="card" id="content-section">
+                <div class="step-badge">Step 2</div>
+                <h2>Provide Your Content</h2>
+                <p class="help-text">
+                    Paste or type the content. AI will analyze it and map relevant parts to the template placeholders.
+                </p>
+                <textarea id="user-content" rows="8"
+                    placeholder="Enter your content here. For example:&#10;&#10;Our project 'Smart Dashboard v2' was completed on March 15, 2026 by the Analytics Team led by Jane Smith. The dashboard provides real-time KPI tracking, automated reporting, and predictive analytics. Key findings show a 35% improvement in decision-making speed..."></textarea>
+            </section>
+
+            <!-- Action -->
+            <div class="action-bar">
+                <button id="process-btn" class="btn-primary" disabled>
+                    <span class="btn-text">&#129302; Analyze &amp; Fill Template</span>
+                    <span class="btn-loading hidden">
+                        <span class="spinner"></span> Processing&hellip;
+                    </span>
+                </button>
+                <button id="manual-btn" class="btn-outline" disabled>
+                    &#9998; Fill Manually (no AI)
+                </button>
+            </div>
+
+            <!-- Progress -->
+            <div id="progress-bar" class="progress-container hidden">
+                <div class="progress-steps">
+                    <div class="progress-step" data-step="parse">Parsing template</div>
+                    <div class="progress-step" data-step="ai">Calling AI model</div>
+                    <div class="progress-step" data-step="fill">Filling placeholders</div>
+                    <div class="progress-step" data-step="render">Rendering preview</div>
+                </div>
+            </div>
+
+            <!-- Output -->
+            <section class="card hidden" id="output-section">
+                <div class="step-badge result-badge">Result</div>
+                <h2>Document Preview</h2>
+                <p class="preview-warning">&#9888; Note: This preview is an approximation. The downloaded .docx file preserves the original template formatting, headers, and footers more accurately.</p>
+                <div class="output-toolbar">
+                    <button id="download-docx" class="btn-success">&#128229; Download .docx</button>
+                    <button id="edit-toggle" class="btn-secondary">&#9998; Edit Mappings</button>
+                </div>
+                <div id="edit-panel" class="edit-panel hidden">
+                    <h3>Placeholder Mappings <small>(editable)</small></h3>
+                    <div id="mappings-editor"></div>
+                    <button id="apply-edits" class="btn-secondary">Apply Changes</button>
+                </div>
+                <div id="document-preview" class="document-preview"></div>
+            </section>
+        </main>
+
+        <footer>
+            <p>DocuFill AI &mdash; Powered by <a href="https://huggingface.co" target="_blank" rel="noopener">Hugging Face</a> Inference API &bull; 100% client-side</p>
+        </footer>
+    </div>
+
+    <!-- Manual Fill Modal -->
+    <div id="manual-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <h2>Fill Placeholders Manually</h2>
+            <div id="manual-fields"></div>
+            <div class="modal-actions">
+                <button id="manual-cancel" class="btn-secondary">Cancel</button>
+                <button id="manual-apply" class="btn-primary">Apply &amp; Preview</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js?v=10"></script>
+</body>
+</html>
